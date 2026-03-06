@@ -27,6 +27,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
+    // Update lastActivity so the refresh-token idle check knows the user is active.
+    // Fire-and-forget to avoid blocking the request.
+    this.userModel.updateOne({ _id: payload.sub }, { lastActivity: new Date() }).exec();
+
     return {
       _id: user._id,
       email: user.email,
