@@ -1,19 +1,18 @@
-import * as mongoose from 'mongoose';
+import { MongoClient } from 'mongodb';
 import * as bcrypt from 'bcryptjs';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/medeffects';
 
 async function seed() {
-  const conn = await mongoose.connect(MONGODB_URI);
-  console.log('Connected to MongoDB');
-
-  // Wait for the connection to be fully ready
-  const db = conn.connection.getClient().db('medeffects');
+  const client = new MongoClient(MONGODB_URI);
+  await client.connect();
+  const db = client.db('medeffects');
+  console.log('Connected to MongoDB — database:', db.databaseName);
 
   // Clear existing data
   const collections = ['users', 'orders', 'ivrrequests', 'doctors', 'products', 'shipments'];
   for (const col of collections) {
-    try { await db.dropCollection(col); } catch (e) { /* collection may not exist */ }
+    try { await db.collection(col).deleteMany({}); } catch (e) { /* collection may not exist */ }
   }
 
   // HIPAA: Use 12 bcrypt rounds for stronger password hashing
@@ -26,31 +25,36 @@ async function seed() {
     {
       firstName: 'Admin', lastName: 'User', email: 'admin@medeffects.com',
       password: hashedPassword, role: 'admin', phone: '(555) 100-0001',
-      isActive: true, biometricEnabled: false, createdAt: new Date(), updatedAt: new Date(),
+      isActive: true, biometricEnabled: false, failedLoginAttempts: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
     },
     {
       firstName: 'Sarah', lastName: 'Johnson', email: 'sarah@medeffects.com',
       password: patientPassword, role: 'patient', phone: '(555) 200-0001',
       address: { street: '123 Main St', city: 'New York', state: 'NY', zipCode: '10001' },
       dateOfBirth: new Date('1990-05-15'), gender: 'female',
-      isActive: true, biometricEnabled: false, createdAt: new Date(), updatedAt: new Date(),
+      isActive: true, biometricEnabled: false, failedLoginAttempts: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
     },
     {
       firstName: 'John', lastName: 'Smith', email: 'john@medeffects.com',
       password: patientPassword, role: 'patient', phone: '(555) 200-0002',
-      isActive: true, biometricEnabled: false, createdAt: new Date(), updatedAt: new Date(),
+      isActive: true, biometricEnabled: false, failedLoginAttempts: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
     },
     {
       firstName: 'Mike', lastName: 'Wilson', email: 'mike.rep@medeffects.com',
       password: repPassword, role: 'sales_rep', phone: '(555) 300-0001',
       licenseNumber: 'MED-45678-2025', licenseExpiry: new Date('2025-12-31'),
-      isActive: true, biometricEnabled: false, createdAt: new Date(), updatedAt: new Date(),
+      isActive: true, biometricEnabled: false, failedLoginAttempts: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
     },
     {
       firstName: 'Emily', lastName: 'Davis', email: 'emily.rep@medeffects.com',
       password: repPassword, role: 'sales_rep', phone: '(555) 300-0002',
       licenseNumber: 'MED-67890-2025', licenseExpiry: new Date('2025-12-31'),
-      isActive: true, biometricEnabled: false, createdAt: new Date(), updatedAt: new Date(),
+      isActive: true, biometricEnabled: false, failedLoginAttempts: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
     },
   ]);
   const userIds = users.insertedIds;
@@ -197,12 +201,15 @@ async function seed() {
   ]);
   console.log(`Created ${ivrs.insertedCount} IVR requests`);
 
+  // Verify data
+  const userCount = await db.collection('users').countDocuments();
+  console.log(`\nVerification — users in DB: ${userCount}`);
+
   console.log('\n--- Seed Complete ---');
   console.log('Admin login: admin@medeffects.com / Admin123!');
-  console.log('Patient login: sarah@medeffects.com / Patient123!');
   console.log('Sales Rep login: mike.rep@medeffects.com / SalesRep123!');
 
-  await mongoose.disconnect();
+  await client.close();
 }
 
 seed().catch(console.error);
