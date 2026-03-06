@@ -18,7 +18,7 @@ export class InsuranceService {
       requestId,
       submittedBy: userId,
       status: 'pending',
-    });
+    } as any);
 
     return ivr;
   }
