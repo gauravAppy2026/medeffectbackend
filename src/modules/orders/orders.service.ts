@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto, AssignOrderDto, UpdateTrackingDto } from './dto/update-order.dto';
@@ -29,6 +29,15 @@ export class OrdersService {
     const count = await this.orderModel.countDocuments();
     const orderId = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 
+    // Validate that at least one product is provided (either lineItems or product+quantity)
+    const hasLineItems = createDto.lineItems && createDto.lineItems.length > 0;
+    const hasSingleProduct = createDto.product && createDto.quantity;
+    if (!hasLineItems && !hasSingleProduct) {
+      throw new BadRequestException(
+        'At least one product is required. Provide either lineItems or product with quantity.',
+      );
+    }
+
     const orderData: any = {
       ...createDto,
       orderId,
@@ -40,12 +49,12 @@ export class OrdersService {
     };
 
     // Build lineItems from either lineItems array or single product/quantity
-    if (createDto.lineItems && createDto.lineItems.length > 0) {
+    if (hasLineItems) {
       orderData.lineItems = createDto.lineItems;
       // Set first item as primary product for backward compat
       orderData.product = createDto.lineItems[0].product;
       orderData.quantity = createDto.lineItems[0].quantity;
-    } else if (createDto.product && createDto.quantity) {
+    } else if (hasSingleProduct) {
       orderData.lineItems = [{ product: createDto.product, quantity: createDto.quantity }];
     }
 
@@ -167,7 +176,7 @@ export class OrdersService {
         },
       },
       { new: true },
-    ).populate(['doctor', 'product', 'salesRep']);
+    ).populate(['doctor', 'product', 'salesRep', { path: 'lineItems.product', model: 'Product' }]);
 
     if (!order) throw new NotFoundException('Order not found');
     return order;
@@ -196,8 +205,8 @@ export class OrdersService {
 
   async getStatusCounts(userId?: string, role?: string) {
     const match: any = {};
-    if (role === 'patient') match.patient = userId;
-    if (role === 'sales_rep') match.salesRep = userId;
+    if (role === 'patient' && userId) match.patient = new Types.ObjectId(userId);
+    if (role === 'sales_rep' && userId) match.salesRep = new Types.ObjectId(userId);
 
     const counts = await this.orderModel.aggregate([
       { $match: match },

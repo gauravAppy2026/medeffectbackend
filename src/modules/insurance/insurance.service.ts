@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { IVRRequest, IVRRequestDocument } from './schemas/ivr-request.schema';
 import { CreateIVRDto } from './dto/create-ivr.dto';
 import { UpdateIVRDto } from './dto/update-ivr.dto';
@@ -83,7 +83,7 @@ export class InsuranceService {
 
   async getStatusCounts(userId?: string, role?: string) {
     const match: any = {};
-    if (role === 'patient') match.submittedBy = userId;
+    if (role === 'patient' && userId) match.submittedBy = new Types.ObjectId(userId);
 
     const counts = await this.ivrModel.aggregate([
       { $match: match },
