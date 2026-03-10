@@ -16,7 +16,7 @@ export class Shipment {
 
   @Prop({
     type: String,
-    enum: ['pending', 'in_transit', 'delivered', 'completed'],
+    enum: ['pending', 'in_transit', 'completed'],
     default: 'pending',
   })
   status: string;

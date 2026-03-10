@@ -2,11 +2,12 @@ import { IsOptional, IsString, IsIn } from 'class-validator';
 
 export class UpdateOrderDto {
   @IsOptional()
-  @IsIn(['submitted', 'approved', 'shipped', 'completed', 'rejected', 'cancelled'])
+  @IsIn(['submitted', 'approved', 'shipped', 'in_transit', 'completed', 'rejected', 'cancelled'])
   status?: string;
 
   @IsOptional() @IsString() rejectionReason?: string;
   @IsOptional() @IsString() note?: string;
+  @IsOptional() @IsString() trackingNumber?: string;
 }
 
 export class AssignOrderDto {

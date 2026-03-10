@@ -91,11 +91,21 @@ export class ShipmentsService {
         note: updateDto.note || `Status changed to ${updateDto.status}`,
       });
 
-      if (updateDto.status === 'delivered') {
+      // Sync shipment status back to the linked order
+      const orderStatusMap: Record<string, string> = {
+        in_transit: 'in_transit',
+        completed: 'completed',
+      };
+      const newOrderStatus = orderStatusMap[updateDto.status];
+      if (newOrderStatus) {
         await this.orderModel.findByIdAndUpdate(shipment.order, {
-          status: 'completed',
+          status: newOrderStatus,
           $push: {
-            statusHistory: { status: 'completed', changedAt: new Date(), note: 'Delivered' },
+            statusHistory: {
+              status: newOrderStatus,
+              changedAt: new Date(),
+              note: updateDto.note || `Updated from shipment: ${updateDto.status}`,
+            },
           },
         });
       }

@@ -2,12 +2,16 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
+import { Shipment, ShipmentDocument } from '../shipments/schemas/shipment.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto, AssignOrderDto, UpdateTrackingDto } from './dto/update-order.dto';
 
 @Injectable()
 export class OrdersService {
-  constructor(@InjectModel(Order.name) private orderModel: Model<OrderDocument>) {}
+  constructor(
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(Shipment.name) private shipmentModel: Model<ShipmentDocument>,
+  ) {}
 
   private parseDeliveryDate(dateStr: string): Date | undefined {
     if (!dateStr) return undefined;
@@ -133,9 +137,9 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
 
     const validTransitions: Record<string, string[]> = {
-      submitted: ['approved', 'rejected'],
-      approved: ['shipped', 'cancelled'],
-      shipped: ['completed'],
+      submitted: ['shipped', 'rejected'],
+      shipped: ['in_transit', 'completed'],
+      in_transit: ['completed'],
     };
 
     if (updateDto.status) {
@@ -146,8 +150,14 @@ export class OrdersService {
         );
       }
 
+      // Shipping requires a tracking number
+      if (updateDto.status === 'shipped' && !updateDto.trackingNumber) {
+        throw new BadRequestException('Tracking number is required when shipping an order');
+      }
+
       order.status = updateDto.status;
       if (updateDto.rejectionReason) order.rejectionReason = updateDto.rejectionReason;
+      if (updateDto.trackingNumber) order.trackingNumber = updateDto.trackingNumber;
 
       order.statusHistory.push({
         status: updateDto.status,
@@ -155,6 +165,16 @@ export class OrdersService {
         changedAt: new Date(),
         note: updateDto.note || `Status changed to ${updateDto.status}`,
       });
+
+      // Auto-create a shipment record when order is shipped
+      if (updateDto.status === 'shipped') {
+        await this.shipmentModel.create({
+          order: order._id,
+          trackingNumber: updateDto.trackingNumber,
+          status: 'pending',
+          statusHistory: [{ status: 'pending', updatedAt: new Date(), note: 'Shipment created from order approval' }],
+        });
+      }
     }
 
     await order.save();
@@ -214,7 +234,7 @@ export class OrdersService {
     ]);
 
     const result: Record<string, number> = {
-      submitted: 0, approved: 0, shipped: 0, completed: 0, rejected: 0, cancelled: 0,
+      submitted: 0, shipped: 0, in_transit: 0, completed: 0, rejected: 0,
     };
     counts.forEach((c) => { result[c._id] = c.count; });
     return result;
