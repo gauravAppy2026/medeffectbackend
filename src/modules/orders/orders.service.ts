@@ -52,8 +52,8 @@ export class OrdersService {
     if (hasLineItems) {
       orderData.lineItems = createDto.lineItems;
       // Set first item as primary product for backward compat
-      orderData.product = createDto.lineItems[0].product;
-      orderData.quantity = createDto.lineItems[0].quantity;
+      orderData.product = createDto.lineItems![0].product;
+      orderData.quantity = createDto.lineItems![0].quantity;
     } else if (hasSingleProduct) {
       orderData.lineItems = [{ product: createDto.product, quantity: createDto.quantity }];
     }
