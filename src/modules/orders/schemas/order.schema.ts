@@ -14,14 +14,20 @@ export class Order {
   @Prop({ type: Types.ObjectId, ref: 'Doctor', required: true })
   doctor: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'Product' })
   product: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
   salesRep: Types.ObjectId;
 
-  @Prop({ required: true, min: 1 })
+  @Prop({ min: 1 })
   quantity: number;
+
+  @Prop({
+    type: [{ product: { type: Types.ObjectId, ref: 'Product' }, quantity: { type: Number, min: 1 } }],
+    default: [],
+  })
+  lineItems: Array<{ product: Types.ObjectId; quantity: number }>;
 
   @Prop({ type: Object })
   address: {

@@ -52,6 +52,9 @@ export class IVRRequest {
   @Prop()
   approvalDocument: string;
 
+  @Prop()
+  adminNote: string;
+
   @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' })
   status: string;
 

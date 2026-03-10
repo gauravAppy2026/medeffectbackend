@@ -39,6 +39,16 @@ export class OrdersService {
       ],
     };
 
+    // Build lineItems from either lineItems array or single product/quantity
+    if (createDto.lineItems && createDto.lineItems.length > 0) {
+      orderData.lineItems = createDto.lineItems;
+      // Set first item as primary product for backward compat
+      orderData.product = createDto.lineItems[0].product;
+      orderData.quantity = createDto.lineItems[0].quantity;
+    } else if (createDto.product && createDto.quantity) {
+      orderData.lineItems = [{ product: createDto.product, quantity: createDto.quantity }];
+    }
+
     // Auto-assign sales rep if the creator is a sales rep
     if (user.role === 'sales_rep') {
       orderData.salesRep = userId;
@@ -56,7 +66,7 @@ export class OrdersService {
 
     const order = await this.orderModel.create(orderData);
 
-    return order.populate(['doctor', 'product', 'salesRep']);
+    return order.populate(['doctor', 'product', 'salesRep', { path: 'lineItems.product', model: 'Product' }]);
   }
 
   async findAll(user: any, query: any) {
@@ -84,6 +94,7 @@ export class OrdersService {
         .populate('product', 'name sku price')
         .populate('salesRep', 'firstName lastName email')
         .populate('patient', 'firstName lastName email')
+        .populate('lineItems.product', 'name sku price')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -101,6 +112,7 @@ export class OrdersService {
       .populate('product')
       .populate('salesRep', 'firstName lastName email phone')
       .populate('patient', 'firstName lastName email phone address')
+      .populate('lineItems.product', 'name sku price')
       .lean();
 
     if (!order) throw new NotFoundException('Order not found');
@@ -137,7 +149,7 @@ export class OrdersService {
     }
 
     await order.save();
-    return order.populate(['doctor', 'product', 'salesRep']);
+    return order.populate(['doctor', 'product', 'salesRep', { path: 'lineItems.product', model: 'Product' }]);
   }
 
   async assignSalesRep(orderId: string, adminId: string, assignDto: AssignOrderDto) {

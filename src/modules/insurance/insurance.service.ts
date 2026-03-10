@@ -73,6 +73,7 @@ export class InsuranceService {
         reviewedBy: adminId,
         reviewedAt: new Date(),
         ...(updateDto.approvalDocument && { approvalDocument: updateDto.approvalDocument }),
+        ...(updateDto.note && { adminNote: updateDto.note }),
       },
       { new: true },
     );
