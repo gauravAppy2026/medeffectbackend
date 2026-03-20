@@ -11,10 +11,7 @@ class PatientInfoDto {
 }
 
 class InsuranceInfoDto {
-  @IsOptional() @IsString() insuranceName?: string;
-  @IsOptional() @IsString() policyNumber?: string;
   @IsOptional() @IsString() medicareId?: string;
-  @IsOptional() @IsString() subscriberName?: string;
 }
 
 export class CreateIVRDto {

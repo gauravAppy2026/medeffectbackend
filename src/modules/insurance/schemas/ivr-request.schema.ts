@@ -30,17 +30,11 @@ export class IVRRequest {
 
   @Prop({
     type: {
-      insuranceName: String,
-      policyNumber: String,
       medicareId: String,
-      subscriberName: String,
     },
   })
   insurance: {
-    insuranceName: string;
-    policyNumber: string;
     medicareId: string;
-    subscriberName: string;
   };
 
   @Prop()
