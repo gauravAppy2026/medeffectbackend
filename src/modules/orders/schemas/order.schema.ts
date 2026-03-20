@@ -24,10 +24,10 @@ export class Order {
   quantity: number;
 
   @Prop({
-    type: [{ product: { type: Types.ObjectId, ref: 'Product' }, quantity: { type: Number, min: 1 } }],
+    type: [{ product: { type: Types.ObjectId, ref: 'Product' }, quantity: { type: Number, min: 1 }, shippedQuantity: { type: Number, min: 0 } }],
     default: [],
   })
-  lineItems: Array<{ product: Types.ObjectId; quantity: number }>;
+  lineItems: Array<{ product: Types.ObjectId; quantity: number; shippedQuantity?: number }>;
 
   @Prop({ type: Object })
   address: {

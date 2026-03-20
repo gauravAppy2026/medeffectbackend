@@ -159,6 +159,19 @@ export class OrdersService {
       if (updateDto.rejectionReason) order.rejectionReason = updateDto.rejectionReason;
       if (updateDto.trackingNumber) order.trackingNumber = updateDto.trackingNumber;
 
+      // Update shipped quantities on line items
+      if (updateDto.status === 'shipped' && updateDto.shippedItems && updateDto.shippedItems.length > 0) {
+        for (const shipped of updateDto.shippedItems) {
+          const lineItem = order.lineItems.find(
+            (li) => li.product.toString() === shipped.product,
+          );
+          if (lineItem) {
+            lineItem.shippedQuantity = shipped.shippedQuantity;
+          }
+        }
+        order.markModified('lineItems');
+      }
+
       order.statusHistory.push({
         status: updateDto.status,
         changedBy: adminId as any,
