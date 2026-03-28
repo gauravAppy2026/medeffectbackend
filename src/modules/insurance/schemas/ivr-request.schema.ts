@@ -13,9 +13,6 @@ export class IVRRequest {
       firstName: String,
       lastName: String,
       dateOfBirth: Date,
-      gender: { type: String, enum: ['male', 'female', 'other'] },
-      phone: String,
-      address: String,
     },
     required: true,
   })
@@ -23,9 +20,6 @@ export class IVRRequest {
     firstName: string;
     lastName: string;
     dateOfBirth: Date;
-    gender: string;
-    phone: string;
-    address: string;
   };
 
   @Prop({

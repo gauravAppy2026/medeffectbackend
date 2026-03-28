@@ -5,9 +5,6 @@ class PatientInfoDto {
   @IsString() @IsNotEmpty() firstName: string;
   @IsString() @IsNotEmpty() lastName: string;
   @IsOptional() @IsString() dateOfBirth?: string;
-  @IsOptional() @IsString() gender?: string;
-  @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() address?: string;
 }
 
 class InsuranceInfoDto {
