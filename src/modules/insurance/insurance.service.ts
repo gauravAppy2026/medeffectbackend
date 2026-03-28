@@ -17,7 +17,7 @@ export class InsuranceService {
       ...createDto,
       requestId,
       submittedBy: userId,
-      status: 'pending',
+      status: 'submitted',
     } as any);
 
     return ivr;
@@ -90,7 +90,7 @@ export class InsuranceService {
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
-    const result: Record<string, number> = { pending: 0, approved: 0, rejected: 0 };
+    const result: Record<string, number> = { submitted: 0, rejected: 0, covered: 0, not_covered: 0 };
     counts.forEach((c) => { result[c._id] = c.count; });
     return result;
   }

@@ -137,9 +137,9 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
 
     const validTransitions: Record<string, string[]> = {
-      submitted: ['shipped', 'rejected'],
-      shipped: ['in_transit', 'completed'],
-      in_transit: ['completed'],
+      submitted: ['approved', 'cancelled'],
+      approved: ['shipped', 'cancelled'],
+      shipped: ['completed'],
     };
 
     if (updateDto.status) {
@@ -150,8 +150,8 @@ export class OrdersService {
         );
       }
 
-      // Shipping requires a tracking number
-      if (updateDto.status === 'shipped' && !updateDto.trackingNumber) {
+      // Shipping requires a tracking number (only when transitioning from approved to shipped)
+      if (updateDto.status === 'shipped' && order.status === 'approved' && !updateDto.trackingNumber) {
         throw new BadRequestException('Tracking number is required when shipping an order');
       }
 
@@ -188,6 +188,16 @@ export class OrdersService {
           statusHistory: [{ status: 'pending', updatedAt: new Date(), note: 'Shipment created from order approval' }],
         });
       }
+    }
+
+    // Allow admin to modify line items on submitted/approved orders
+    if (updateDto.lineItems && ['submitted', 'approved'].includes(order.status)) {
+      order.lineItems = updateDto.lineItems as any;
+      if (updateDto.lineItems.length > 0) {
+        order.product = updateDto.lineItems[0].product as any;
+        order.quantity = updateDto.lineItems[0].quantity;
+      }
+      order.markModified('lineItems');
     }
 
     await order.save();
@@ -247,7 +257,7 @@ export class OrdersService {
     ]);
 
     const result: Record<string, number> = {
-      submitted: 0, shipped: 0, in_transit: 0, completed: 0, rejected: 0,
+      submitted: 0, approved: 0, shipped: 0, completed: 0, cancelled: 0,
     };
     counts.forEach((c) => { result[c._id] = c.count; });
     return result;

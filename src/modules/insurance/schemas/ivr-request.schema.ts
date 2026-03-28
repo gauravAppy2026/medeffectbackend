@@ -49,7 +49,7 @@ export class IVRRequest {
   @Prop()
   adminNote: string;
 
-  @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' })
+  @Prop({ type: String, enum: ['submitted', 'rejected', 'covered', 'not_covered'], default: 'submitted' })
   status: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })

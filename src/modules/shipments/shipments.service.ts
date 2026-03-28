@@ -93,7 +93,6 @@ export class ShipmentsService {
 
       // Sync shipment status back to the linked order
       const orderStatusMap: Record<string, string> = {
-        in_transit: 'in_transit',
         completed: 'completed',
       };
       const newOrderStatus = orderStatusMap[updateDto.status];

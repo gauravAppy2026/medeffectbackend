@@ -2,13 +2,14 @@ import { IsOptional, IsString, IsIn, IsArray } from 'class-validator';
 
 export class UpdateOrderDto {
   @IsOptional()
-  @IsIn(['submitted', 'approved', 'shipped', 'in_transit', 'completed', 'rejected', 'cancelled'])
+  @IsIn(['submitted', 'approved', 'shipped', 'completed', 'cancelled'])
   status?: string;
 
   @IsOptional() @IsString() rejectionReason?: string;
   @IsOptional() @IsString() note?: string;
   @IsOptional() @IsString() trackingNumber?: string;
   @IsOptional() @IsArray() shippedItems?: Array<{ product: string; shippedQuantity: number }>;
+  @IsOptional() @IsArray() lineItems?: Array<{ product: string; quantity: number }>;
 }
 
 export class AssignOrderDto {
