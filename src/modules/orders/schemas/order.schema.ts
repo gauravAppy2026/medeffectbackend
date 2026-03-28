@@ -45,7 +45,7 @@ export class Order {
 
   @Prop({
     type: String,
-    enum: ['submitted', 'approved', 'shipped', 'completed', 'rejected', 'cancelled'],
+    enum: ['submitted', 'approved', 'shipped', 'completed', 'cancelled'],
     default: 'submitted',
   })
   status: string;

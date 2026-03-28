@@ -25,8 +25,8 @@ export class ReportsService {
       completedOrders,
       todayOrders,
       totalIVR,
-      pendingIVR,
-      approvedIVR,
+      submittedIVR,
+      coveredIVR,
       rejectedIVR,
       activeSalesReps,
       monthlyOrders,
@@ -37,8 +37,8 @@ export class ReportsService {
       this.orderModel.countDocuments({ status: 'completed' }),
       this.orderModel.countDocuments({ createdAt: { $gte: startOfToday } }),
       this.ivrModel.countDocuments(),
-      this.ivrModel.countDocuments({ status: 'pending' }),
-      this.ivrModel.countDocuments({ status: 'approved' }),
+      this.ivrModel.countDocuments({ status: 'submitted' }),
+      this.ivrModel.countDocuments({ status: 'covered' }),
       this.ivrModel.countDocuments({ status: 'rejected' }),
       this.userModel.countDocuments({ role: 'sales_rep', isActive: true }),
       this.orderModel.countDocuments({ createdAt: { $gte: startOfMonth } }),
@@ -51,10 +51,10 @@ export class ReportsService {
 
     return {
       orders: { total: totalOrders, pending: pendingOrders, approved: approvedOrders, completed: completedOrders, today: todayOrders, monthly: monthlyOrders },
-      ivr: { total: totalIVR, pending: pendingIVR, approved: approvedIVR, rejected: rejectedIVR },
+      ivr: { total: totalIVR, submitted: submittedIVR, covered: coveredIVR, rejected: rejectedIVR },
       salesReps: { active: activeSalesReps },
       shippedToday,
-      approvalRate: totalIVR > 0 ? Math.round((approvedIVR / totalIVR) * 100) : 0,
+      approvalRate: totalIVR > 0 ? Math.round((coveredIVR / totalIVR) * 100) : 0,
     };
   }
 

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Shipment, ShipmentDocument } from './schemas/shipment.schema';
 import { Order, OrderDocument } from '../orders/schemas/order.schema';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
@@ -43,7 +43,7 @@ export class ShipmentsService {
     return { data, total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / limit) };
   }
 
-  async create(createDto: CreateShipmentDto) {
+  async create(createDto: CreateShipmentDto, userId?: string) {
     // Support both MongoDB ObjectId and formatted orderId (e.g. "ORD-2026-0007")
     let order: OrderDocument | null = null;
     const orderRef = createDto.order;
@@ -69,7 +69,7 @@ export class ShipmentsService {
       order.status = 'shipped';
       order.statusHistory.push({
         status: 'shipped',
-        changedBy: null as any,
+        changedBy: userId ? new Types.ObjectId(userId) : (null as any),
         changedAt: new Date(),
         note: `Tracking: ${createDto.trackingNumber}`,
       });
@@ -79,7 +79,7 @@ export class ShipmentsService {
     return shipment;
   }
 
-  async update(id: string, updateDto: UpdateShipmentDto) {
+  async update(id: string, updateDto: UpdateShipmentDto, userId?: string) {
     const shipment = await this.shipmentModel.findById(id);
     if (!shipment) throw new NotFoundException('Shipment not found');
 
@@ -97,16 +97,17 @@ export class ShipmentsService {
       };
       const newOrderStatus = orderStatusMap[updateDto.status];
       if (newOrderStatus) {
-        await this.orderModel.findByIdAndUpdate(shipment.order, {
-          status: newOrderStatus,
-          $push: {
-            statusHistory: {
-              status: newOrderStatus,
-              changedAt: new Date(),
-              note: updateDto.note || `Updated from shipment: ${updateDto.status}`,
-            },
-          },
-        });
+        const order = await this.orderModel.findById(shipment.order);
+        if (order && order.status !== 'cancelled') {
+          order.status = newOrderStatus;
+          order.statusHistory.push({
+            status: newOrderStatus,
+            changedBy: userId ? new Types.ObjectId(userId) : (null as any),
+            changedAt: new Date(),
+            note: updateDto.note || `Updated from shipment: ${updateDto.status}`,
+          });
+          await order.save();
+        }
       }
     }
 

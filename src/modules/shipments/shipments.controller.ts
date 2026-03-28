@@ -5,6 +5,7 @@ import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('admin/shipments')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,12 +19,12 @@ export class ShipmentsController {
   }
 
   @Post()
-  async create(@Body() createDto: CreateShipmentDto) {
-    return this.shipmentsService.create(createDto);
+  async create(@CurrentUser('_id') adminId: string, @Body() createDto: CreateShipmentDto) {
+    return this.shipmentsService.create(createDto, adminId);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() updateDto: UpdateShipmentDto) {
-    return this.shipmentsService.update(id, updateDto);
+  async update(@CurrentUser('_id') adminId: string, @Param('id') id: string, @Body() updateDto: UpdateShipmentDto) {
+    return this.shipmentsService.update(id, updateDto, adminId);
   }
 }
