@@ -7,6 +7,7 @@ import { Order, OrderDocument } from '../orders/schemas/order.schema';
 import { IVRRequest, IVRRequestDocument } from '../insurance/schemas/ivr-request.schema';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @Injectable()
@@ -122,5 +123,59 @@ export class UsersService {
 
     const { password, refreshToken, ...result } = user.toObject();
     return result;
+  }
+
+  async getUserById(id: string) {
+    const user = await this.userModel
+      .findById(id)
+      .select('-password -refreshToken')
+      .lean();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async updateUser(id: string, updateDto: UpdateUserDto) {
+    const existing = await this.userModel.findById(id);
+    if (!existing) throw new NotFoundException('User not found');
+
+    const { address, city, state, zipCode, dob, password, email, assignedDoctors, ...rest } = updateDto;
+
+    const updateData: any = { ...rest };
+
+    if (email) {
+      const lowercased = email.toLowerCase();
+      if (lowercased !== existing.email) {
+        const conflict = await this.userModel.findOne({ email: lowercased, _id: { $ne: id } });
+        if (conflict) throw new ConflictException('Email already registered');
+        updateData.email = lowercased;
+      }
+    }
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 12);
+    }
+
+    if (address !== undefined || city !== undefined || state !== undefined || zipCode !== undefined) {
+      updateData.address = {
+        street: address ?? existing.address?.street ?? '',
+        city: city ?? existing.address?.city ?? '',
+        state: state ?? existing.address?.state ?? '',
+        zipCode: zipCode ?? existing.address?.zipCode ?? '',
+      };
+    }
+
+    if (dob !== undefined) {
+      updateData.dateOfBirth = dob ? new Date(dob) : null;
+    }
+
+    if (assignedDoctors !== undefined) {
+      updateData.assignedDoctors = assignedDoctors;
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(id, { $set: updateData }, { new: true })
+      .select('-password -refreshToken')
+      .lean();
+    return updated;
   }
 }
