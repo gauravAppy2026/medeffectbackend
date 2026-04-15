@@ -28,8 +28,8 @@ export class OrdersController {
   }
 
   @Get('orders/:id')
-  async findById(@Param('id') id: string) {
-    return this.ordersService.findById(id);
+  async findById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.ordersService.findById(id, user);
   }
 
   @Put('admin/orders/:id')

@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
 import { Shipment, ShipmentDocument } from '../shipments/schemas/shipment.schema';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto, AssignOrderDto, UpdateTrackingDto } from './dto/update-order.dto';
 
@@ -11,7 +12,25 @@ export class OrdersService {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(Shipment.name) private shipmentModel: Model<ShipmentDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
+
+  private async getSalesRepFilter(userId: string): Promise<any> {
+    const fullUser = await this.userModel
+      .findById(userId)
+      .select('assignedDoctors')
+      .lean();
+    const assignedDoctorIds = fullUser?.assignedDoctors || [];
+    if (assignedDoctorIds.length === 0) {
+      return { salesRep: new Types.ObjectId(userId) };
+    }
+    return {
+      $or: [
+        { salesRep: new Types.ObjectId(userId) },
+        { doctor: { $in: assignedDoctorIds } },
+      ],
+    };
+  }
 
   private parseDeliveryDate(dateStr: string): Date | undefined {
     if (!dateStr) return undefined;
@@ -89,15 +108,23 @@ export class OrdersService {
     if (user.role === 'patient') {
       filter.patient = user._id;
     } else if (user.role === 'sales_rep') {
-      filter.salesRep = user._id;
+      Object.assign(filter, await this.getSalesRepFilter(user._id));
     }
 
     if (status && status !== 'all') filter.status = status;
     if (search) {
-      filter.$or = [
+      const searchConds = [
         { orderId: { $regex: search, $options: 'i' } },
         { patientName: { $regex: search, $options: 'i' } },
       ];
+      // If filter already has $or (from sales_rep access), combine via $and
+      if (filter.$or) {
+        const existingOr = filter.$or;
+        delete filter.$or;
+        filter.$and = [{ $or: existingOr }, { $or: searchConds }];
+      } else {
+        filter.$or = searchConds;
+      }
     }
 
     const [data, total] = await Promise.all([
@@ -118,7 +145,7 @@ export class OrdersService {
     return { data, total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / limit) };
   }
 
-  async findById(orderId: string) {
+  async findById(orderId: string, user?: any) {
     const order = await this.orderModel
       .findById(orderId)
       .populate('doctor')
@@ -129,6 +156,28 @@ export class OrdersService {
       .lean();
 
     if (!order) throw new NotFoundException('Order not found');
+
+    // Access control for sales_rep: can view if they are salesRep OR doctor is in their assignedDoctors
+    if (user && user.role === 'sales_rep') {
+      const isOwner = order.salesRep?._id?.toString() === user._id.toString();
+      if (!isOwner) {
+        const fullUser = await this.userModel
+          .findById(user._id)
+          .select('assignedDoctors')
+          .lean();
+        const assignedDoctorIds = (fullUser?.assignedDoctors || []).map((id: any) => id.toString());
+        const orderDoctorId = (order.doctor as any)?._id?.toString() || (order.doctor as any)?.toString();
+        if (!orderDoctorId || !assignedDoctorIds.includes(orderDoctorId)) {
+          throw new NotFoundException('Order not found');
+        }
+      }
+    } else if (user && user.role === 'patient') {
+      const patientId = (order.patient as any)?._id?.toString() || (order.patient as any)?.toString();
+      if (patientId !== user._id.toString()) {
+        throw new NotFoundException('Order not found');
+      }
+    }
+
     return order;
   }
 
@@ -249,7 +298,9 @@ export class OrdersService {
   async getStatusCounts(userId?: string, role?: string) {
     const match: any = {};
     if (role === 'patient' && userId) match.patient = new Types.ObjectId(userId);
-    if (role === 'sales_rep' && userId) match.salesRep = new Types.ObjectId(userId);
+    if (role === 'sales_rep' && userId) {
+      Object.assign(match, await this.getSalesRepFilter(userId));
+    }
 
     const counts = await this.orderModel.aggregate([
       { $match: match },
