@@ -90,8 +90,13 @@ export class InsuranceService {
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
+    const validKeys = new Set(['submitted', 'rejected', 'covered', 'not_covered']);
     const result: Record<string, number> = { submitted: 0, rejected: 0, covered: 0, not_covered: 0 };
-    counts.forEach((c) => { result[c._id] = c.count; });
+    counts.forEach((c) => {
+      if (validKeys.has(c._id)) {
+        result[c._id] = c.count;
+      }
+    });
     return result;
   }
 }

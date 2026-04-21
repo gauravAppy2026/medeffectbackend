@@ -98,7 +98,12 @@ export class OrdersService {
 
     const order = await this.orderModel.create(orderData);
 
-    return order.populate(['doctor', 'product', 'salesRep', { path: 'lineItems.product', model: 'Product' }]);
+    return order.populate([
+      { path: 'doctor' },
+      { path: 'product' },
+      { path: 'salesRep', select: 'firstName lastName email phone' },
+      { path: 'lineItems.product', model: 'Product' },
+    ]);
   }
 
   async findAll(user: any, query: any) {
@@ -250,7 +255,12 @@ export class OrdersService {
     }
 
     await order.save();
-    return order.populate(['doctor', 'product', 'salesRep', { path: 'lineItems.product', model: 'Product' }]);
+    return order.populate([
+      { path: 'doctor' },
+      { path: 'product' },
+      { path: 'salesRep', select: 'firstName lastName email phone' },
+      { path: 'lineItems.product', model: 'Product' },
+    ]);
   }
 
   async assignSalesRep(orderId: string, adminId: string, assignDto: AssignOrderDto) {
@@ -268,7 +278,12 @@ export class OrdersService {
         },
       },
       { new: true },
-    ).populate(['doctor', 'product', 'salesRep', { path: 'lineItems.product', model: 'Product' }]);
+    ).populate([
+      { path: 'doctor' },
+      { path: 'product' },
+      { path: 'salesRep', select: 'firstName lastName email phone' },
+      { path: 'lineItems.product', model: 'Product' },
+    ]);
 
     if (!order) throw new NotFoundException('Order not found');
     return order;
@@ -307,10 +322,15 @@ export class OrdersService {
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
+    const validKeys = new Set(['submitted', 'approved', 'shipped', 'completed', 'cancelled']);
     const result: Record<string, number> = {
       submitted: 0, approved: 0, shipped: 0, completed: 0, cancelled: 0,
     };
-    counts.forEach((c) => { result[c._id] = c.count; });
+    counts.forEach((c) => {
+      if (validKeys.has(c._id)) {
+        result[c._id] = c.count;
+      }
+    });
     return result;
   }
 }
