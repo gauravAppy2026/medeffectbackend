@@ -20,13 +20,17 @@ export class OrdersService {
       .findById(userId)
       .select('assignedDoctors')
       .lean();
-    const assignedDoctorIds = fullUser?.assignedDoctors || [];
-    if (assignedDoctorIds.length === 0) {
-      return { salesRep: new Types.ObjectId(userId) };
+    const rawIds = fullUser?.assignedDoctors || [];
+    const userObjId = new Types.ObjectId(userId);
+    if (rawIds.length === 0) {
+      return { salesRep: userObjId };
     }
+    // Explicitly cast to ObjectId — .lean() can leave these as strings or raw
+    // objects that don't match strictly in $in across driver versions.
+    const assignedDoctorIds = rawIds.map((id: any) => new Types.ObjectId(id.toString()));
     return {
       $or: [
-        { salesRep: new Types.ObjectId(userId) },
+        { salesRep: userObjId },
         { doctor: { $in: assignedDoctorIds } },
       ],
     };
