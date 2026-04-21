@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { User, UserDocument } from './schemas/user.schema';
 import { Order, OrderDocument } from '../orders/schemas/order.schema';
@@ -116,7 +116,7 @@ export class UsersService {
     }
 
     if (assignedDoctors && assignedDoctors.length > 0) {
-      userData.assignedDoctors = assignedDoctors;
+      userData.assignedDoctors = assignedDoctors.map((id) => new Types.ObjectId(id));
     }
 
     const user = await this.userModel.create(userData);
@@ -169,7 +169,7 @@ export class UsersService {
     }
 
     if (assignedDoctors !== undefined) {
-      updateData.assignedDoctors = assignedDoctors;
+      updateData.assignedDoctors = assignedDoctors.map((id) => new Types.ObjectId(id));
     }
 
     const updated = await this.userModel

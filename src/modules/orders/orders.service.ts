@@ -25,9 +25,14 @@ export class OrdersService {
     if (rawIds.length === 0) {
       return { salesRep: userObjId };
     }
-    // Explicitly cast to ObjectId — .lean() can leave these as strings or raw
-    // objects that don't match strictly in $in across driver versions.
-    const assignedDoctorIds = rawIds.map((id: any) => new Types.ObjectId(id.toString()));
+    // Match both ObjectId and string forms of doctor — legacy records may
+    // have been stored as strings while new records are ObjectIds.
+    const assignedDoctorIds: any[] = [];
+    rawIds.forEach((id: any) => {
+      const s = id.toString();
+      assignedDoctorIds.push(new Types.ObjectId(s));
+      assignedDoctorIds.push(s);
+    });
     return {
       $or: [
         { salesRep: userObjId },
@@ -75,14 +80,26 @@ export class OrdersService {
       ],
     };
 
+    // Explicitly cast reference fields to ObjectId — spreading a DTO (typed any)
+    // bypasses Mongoose schema casting in some versions, causing IDs to be
+    // persisted as strings and breaking $in queries.
+    if (createDto.doctor) {
+      orderData.doctor = new Types.ObjectId(createDto.doctor.toString());
+    }
+
     // Build lineItems from either lineItems array or single product/quantity
     if (hasLineItems) {
-      orderData.lineItems = createDto.lineItems;
+      orderData.lineItems = createDto.lineItems!.map((li) => ({
+        product: new Types.ObjectId(li.product.toString()),
+        quantity: li.quantity,
+      }));
       // Set first item as primary product for backward compat
-      orderData.product = createDto.lineItems![0].product;
+      orderData.product = new Types.ObjectId(createDto.lineItems![0].product.toString());
       orderData.quantity = createDto.lineItems![0].quantity;
     } else if (hasSingleProduct) {
-      orderData.lineItems = [{ product: createDto.product, quantity: createDto.quantity }];
+      const productObjId = new Types.ObjectId(createDto.product!.toString());
+      orderData.product = productObjId;
+      orderData.lineItems = [{ product: productObjId, quantity: createDto.quantity }];
     }
 
     // Auto-assign sales rep if the creator is a sales rep
