@@ -61,7 +61,7 @@ export class UsersService {
     if (role === 'sales_rep' && data.length > 0) {
       const userIds = data.map((u) => u._id);
 
-      const [orderCounts, ivrCounts, practitionerCounts] = await Promise.all([
+      const [orderCounts, ivrCounts] = await Promise.all([
         this.orderModel.aggregate([
           { $match: { salesRep: { $in: userIds } } },
           { $group: { _id: '$salesRep', count: { $sum: 1 } } },
@@ -70,22 +70,17 @@ export class UsersService {
           { $match: { submittedBy: { $in: userIds } } },
           { $group: { _id: '$submittedBy', count: { $sum: 1 } } },
         ]),
-        this.orderModel.aggregate([
-          { $match: { salesRep: { $in: userIds } } },
-          { $group: { _id: { salesRep: '$salesRep', doctor: '$doctor' } } },
-          { $group: { _id: '$_id.salesRep', count: { $sum: 1 } } },
-        ]),
       ]);
 
       const orderMap = Object.fromEntries(orderCounts.map((c) => [String(c._id), c.count]));
       const ivrMap = Object.fromEntries(ivrCounts.map((c) => [String(c._id), c.count]));
-      const practMap = Object.fromEntries(practitionerCounts.map((c) => [String(c._id), c.count]));
 
       for (const user of data as any[]) {
         const uid = String(user._id);
         user.orderCount = orderMap[uid] || 0;
         user.ivrCount = ivrMap[uid] || 0;
-        user.practitionerCount = practMap[uid] || 0;
+        // Practitioners = providers assigned to this rep (not distinct doctors from orders)
+        user.practitionerCount = Array.isArray(user.assignedDoctors) ? user.assignedDoctors.length : 0;
       }
     }
 
